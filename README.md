@@ -39,8 +39,9 @@ COPY_ALL_AUDIO_OR_VIDEO_STREAMS_OF_ALLOWED_CODECS = False  # Set to True to pres
 
 ## 🚀 Usage
 ```bash
-#one time
+#One time run:
 chmod +x ffmpeg_convert.py
+
 #And then you can call it like this:
 ./ffmpeg_convert.py 
 ```
