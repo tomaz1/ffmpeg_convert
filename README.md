@@ -38,9 +38,16 @@ COPY_ALL_AUDIO_OR_VIDEO_STREAMS_OF_ALLOWED_CODECS = False  # Set to True to pres
 ---
 
 ## 🚀 Usage
-
 ```bash
-python3 script.py <input_path> [options]
+#one time
+chmod +x ffmpeg_convert.py
+#And then you can call it like this:
+./ffmpeg_convert.py 
+```
+```bash
+python3 ffmpeg_convert.py <input_path> [options]
+#or
+./ffmpeg_convert.py <input_path> [options]
 ```
 
 ### 📁 Input
