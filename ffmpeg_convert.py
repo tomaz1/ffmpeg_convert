@@ -396,8 +396,6 @@ def build_audio_args(input_path, convert_audio, original_audio_codec, output_aud
         bps_value = bitrate.replace('k', '000')
         args += ["-metadata:s:a:0", f"BPS={bps_value}"]
     else:
-        #args += ["-map", "0:a"]  # copy all audio streams
-        args += ["-c:a", "copy"]
         if COPY_ALL_AUDIO_OR_VIDEO_STREAMS_OF_ALLOWED_CODECS:
             args += ["-map", "0:a"]  # copy all audio streams
         else:
