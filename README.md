@@ -20,6 +20,7 @@ This script solves that by automatically converting only the necessary streams, 
 - ✅ Multithreaded encoding using all available CPU cores (up to 16)
 - ✅ Smart codec detection and selective conversion
 - ✅ Dry-run mode to preview actions without executing
+- ✅ Possible to force video conversion to mp4 (mkv->mp4)
 - ✅ Convert subtitles only, recursively across directories
 
 ---
@@ -28,11 +29,18 @@ This script solves that by automatically converting only the necessary streams, 
 
 ```python
 FORCE_CONVERSION_VIDEO_CODECS = ["MPEG4-XVID"]
+
 FORCE_CONVERSION_AUDIO_CODECS = ["DTS", "TRUEHD"]
+
 CRF = "20"  # lower = higher quality (range: 18–28)
+
 OUTPUT_VIDEO_CODEC = "libx265"  # Can be changed to any ffmpeg-supported encoder
+
 OUTPUT_AUDIO_CODEC = "eac3"     # Can be changed to ac3, aac, etc.
+
 COPY_ALL_AUDIO_OR_VIDEO_STREAMS_OF_ALLOWED_CODECS = False  # Set to True to preserve all streams
+# Parameter --output-mp4 will reset this setting to false (even if set to True in here)
+
 ```
 
 ---
@@ -61,6 +69,7 @@ python3 ffmpeg_convert.py <input_path> [options]
 | `-s`, `--subs-only` | Convert subtitles only                         |
 | `--log <file>`      | Output all messages to log file                |
 | `--dry-run`         | Preview what would be done, without converting |
+| `--output-mp4`      | Force output video format to MP4               |
 | `--help`, `-h`      | Display help and exit                          |
 
 ---

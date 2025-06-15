@@ -8,7 +8,7 @@
 #                  Include only conversion of first audio and video stream! (Do we really need more than audio or video stream?)
 #                  Added CRF setting for x265 codec, default is 20.  
 #   14. 6. 25 v1.5 Added support for copying all audio and video streams of allowed codecs, but without real-time stats.
-
+#   15. 6. 25 v1.6 Added support for dynamic bitrate mapping based on number of audio channels.
 #
 # Known issues:
 #  - If the input .mkv file contains subtitles, they will be copied to the new file,
@@ -20,7 +20,9 @@
 #     - If only the video stream needs to be converted, you can use the global setting
 #       COPY_ALL_AUDIO_OR_VIDEO_STREAMS_OF_ALLOWED_CODECS to allow copying all audio streams.
 #     - If only the audio stream needs to be converted, the same setting allows copying all video streams.
+#  - EAC3 on ffmpeg doesnt support more than 5.1 channels
 
+VERSION = "1.6"
 import os
 import sys
 import argparse
@@ -49,12 +51,15 @@ FORCE_CONVERSION_AUDIO_CODECS = ["DTS", "TRUEHD"]
 #Usually between 18 and 28 vor x265, 18 is visually lossless, 28 is low quality
 CRF = "20"  # Default CRF value for x265, can be adjusted
 
-# Bitrate mapping for known audio codecs.
-DEFAULT_BITRATE = "1024k"
-AUDIO_BITRATE_MAP = {
-    "TRUEHD": "1536k",
-    "DTS": "1536k"
-    # Add more codec-to-bitrate mappings as needed (don't forget comma)
+# New bitrate mapping
+DEFAULT_BITRATE = "768k"  # Default bitrate if channels are unknown
+BITRATE_MAP = {
+    2: "384k",
+    3: "448k",
+    5: "768k",
+    6: "768k",
+    7: "1024k",
+    8: "1536k"
 }
 
 OUTPUT_VIDEO_CODEC = "libx265"
@@ -64,7 +69,7 @@ OUTPUT_VIDEO_CODEC = "libx265"
 #Tested aac, ac3 and eac3
 #OUTPUT_AUDIO_CODEC = "ac3" # max bitrate = 640k !!
 #EAC3 is even faster then eac3 conversion on same old CPU, speed 45-50x
-OUTPUT_AUDIO_CODEC = "eac3" 
+OUTPUT_AUDIO_CODEC = "aac" # libfdk_aac?
 
 # If True, all audio and video streams that use allowed codecs will be copied instead of just the first stream.
 # This is useful when input files contain multiple audio tracks (such as different languages or commentary),
@@ -83,6 +88,7 @@ OUTPUT_AUDIO_CODEC = "eac3"
 #
 # Do we really need more than one audio or video stream?
 COPY_ALL_AUDIO_OR_VIDEO_STREAMS_OF_ALLOWED_CODECS = False  # False or True
+# Paramether --output-mp4 will reset this setting to false (even if set to True in here)
 
 SUPPORTED_EXTENSIONS = [".avi", ".mkv", ".mp4", ".mpg", ".mpeg", ".mov", ".wmv"]
 
@@ -96,16 +102,17 @@ SUPPORTED_EXTENSIONS = [".avi", ".mkv", ".mp4", ".mpg", ".mpeg", ".mov", ".wmv"]
 # ====================
 def help():
     message = """
-FFmpeg Video Converter Script, v1.5 (Tomaž 2025)
+FFmpeg Video Converter Script, v{4} (Tomaž 2025)
 
 Usage:
-  python3 script.py <input_path> [-i] [--log output.log] [--dry-run] [-s]
+  python3 script.py <input_path> [-i] [--log output.log] [--dry-run] [--output-mp4] [-s]
 
 Options:
   -i                    Only display video/audio codec info, no conversion.
   -s, --subs-only       Convert subtitles only (no video/audio processing).
   --log <filename>      Write output to log file instead of console.
   --dry-run             Simulate conversion without actually running ffmpeg.
+  --output-mp4          Force output format to MP4 regardless of input format.
   --help, -h            Show this help message and exit.
 
 Behavior:
@@ -120,7 +127,7 @@ Configuration:
   - FORCE_CONVERSION_AUDIO_CODECS: {1}
   - OUTPUT_VIDEO_CODEC: {2}
   - OUTPUT_AUDIO_CODEC: {3}
-""".format(FORCE_CONVERSION_VIDEO_CODECS, FORCE_CONVERSION_AUDIO_CODECS, OUTPUT_VIDEO_CODEC, OUTPUT_AUDIO_CODEC)
+""".format(FORCE_CONVERSION_VIDEO_CODECS, FORCE_CONVERSION_AUDIO_CODECS, OUTPUT_VIDEO_CODEC, OUTPUT_AUDIO_CODEC, VERSION)
     print(message)
 
 # ====================
@@ -149,6 +156,7 @@ def parse_args():
     parser.add_argument("--log", dest="log_file", help="Path to log file")
     parser.add_argument("--dry-run", action="store_true", help="Perform a dry run without actual conversion")
     parser.add_argument("--help", "-h", action="store_true", dest="show_help", help="Show help")
+    parser.add_argument("--output-mp4", action="store_true", dest="output_mp4", help="Force MP4 as output format for all conversions")
     args = parser.parse_args()
 
     if args.show_help:
@@ -329,16 +337,13 @@ def build_video_args(input_path, convert_video, output_video_codec, output_ext):
     return args
 
 # ====================
-def build_audio_args(input_path, convert_audio, original_audio_codec, output_audio_codec, default_bitrate, audio_bitrate_map, scan_func):
+def build_audio_args(input_path, convert_audio, original_audio_codec, output_audio_codec, default_bitrate, scan_func):
     args = []
 
     if convert_audio:
         args += ["-map", "0:a:0"]  # always convert only the first audio stream
         args += ["-map_metadata", "-1"]
         args += ["-c:a", OUTPUT_AUDIO_CODEC]
-
-        bitrate = AUDIO_BITRATE_MAP.get(original_audio_codec.upper(), DEFAULT_BITRATE)
-        args += ["-b:a", bitrate]
 
         audio_info = scan_func(input_path).get("audio_metadata", {})
         ch = audio_info.get("channels")
@@ -371,14 +376,18 @@ def build_audio_args(input_path, convert_audio, original_audio_codec, output_aud
         else:
             ch_desc = "5.1"
 
-        if OUTPUT_AUDIO_CODEC.upper() in ["AC3", "EAC3"] and ch_desc == "7.1":
+        if OUTPUT_AUDIO_CODEC.upper() in ["AC3", "EAC3"] and ch_desc == "7.1": #AC3 supports max 5.1
             ch_desc = "5.1"
+            ch_num = 6  # force to 5.1 for AC3
+
+        bitrate = BITRATE_MAP.get(ch_num, DEFAULT_BITRATE)  # fallback if channels unknown
+        args += ["-b:a", bitrate]
 
         title = f"{OUTPUT_AUDIO_CODEC.upper()} Audio / {ch_desc} / {sr} Hz / {bitrate}"
         args += ["-metadata:s:a:0", f"title={title}"]
 
         if OUTPUT_AUDIO_CODEC.upper() in ["AC3", "EAC3"]:
-            args += ["-ac", "6", "-channel_layout", "5.1"]
+            args += ["-ac", "6", "-channel_layout", "5.1"] #AC3 supports max 5.1
         elif ch_num and ch_num > 2:
             args += ["-ac", str(ch_num)]
 
@@ -401,7 +410,6 @@ def build_audio_args(input_path, convert_audio, original_audio_codec, output_aud
 def convert_file(input_path, output_path, convert_video, convert_audio, original_video_codec, original_audio_codec, dry_run=False, log_file=None):
     cmd = ["ffmpeg", "-y", "-i", str(input_path)]
 
-    
     #copy subtitles if output is MKV
     if output_path.suffix.lower() == ".mkv":
         cmd += ["-map", "0:s?"]
@@ -409,7 +417,7 @@ def convert_file(input_path, output_path, convert_video, convert_audio, original
 
     # Compose video and audio arguments
     cmd += build_video_args(input_path, convert_video, OUTPUT_VIDEO_CODEC, output_path.suffix.lower())
-    cmd += build_audio_args(input_path, convert_audio, original_audio_codec, OUTPUT_AUDIO_CODEC, DEFAULT_BITRATE, AUDIO_BITRATE_MAP, scan_file)
+    cmd += build_audio_args(input_path, convert_audio, original_audio_codec, OUTPUT_AUDIO_CODEC, DEFAULT_BITRATE, scan_file)
 
     if MULTITHREADING_ENABLED:
         cmd += ["-threads", str(NUMBER_OF_THREADS)]
@@ -442,6 +450,7 @@ def process_file(file_path, log_file=None, dry_run=False):
         return False
 
     output_ext = '.mkv' if file_path.suffix.lower() == '.mkv' else '.mp4'
+    output_ext = '.mp4' if force_mp4 else ('.mkv' if file_path.suffix.lower() == '.mkv' else '.mp4')
     output_filename = f"conv-{file_path.stem}{output_ext}"
     output_path = file_path.parent / output_filename
     existing_files = list(file_path.parent.glob(f"conv-{file_path.stem}.*"))
@@ -518,6 +527,9 @@ if __name__ == "__main__":
     input_path = Path(args.input_path)
     dry_run = args.dry_run
     log_file = args.log_file
+    force_mp4 = args.output_mp4
+    if force_mp4: #MP4 supports only one video and one audio stream, so we need to set COPY_ALL_AUDIO_OR_VIDEO_STREAMS_OF_ALLOWED_CODECS to False
+        COPY_ALL_AUDIO_OR_VIDEO_STREAMS_OF_ALLOWED_CODECS = False
 
     #Convert codec lists to uppercase
     FORCE_CONVERSION_VIDEO_CODECS = [v.upper() for v in FORCE_CONVERSION_VIDEO_CODECS]
