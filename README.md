@@ -127,8 +127,7 @@ python3 script.py movie.mkv --log output.log
 
 ## ⚠️ Known Issues
 
-- Subtitles in `.mkv` and `.mp4` output files are copied, but language metadata is lost
-  - Note: MP4 supports only basic subtitle formats like `mov_text`, and may not display multiple subtitle tracks properly on all devices
+- When converting from `.mkv` to `.mkv`, embedded subtitles are copied, but any language tags or metadata associated with them will be lost.
 - Only the **first** audio/video stream is converted
 - To preserve additional streams (e.g. secondary audio tracks), set `COPY_ALL_AUDIO_OR_VIDEO_STREAMS_OF_ALLOWED_CODECS = True`
   - ⚠️ This may disable real-time FFmpeg stats like time/speed/bitrate
