@@ -1,14 +1,8 @@
 #!/usr/bin/env python3
-#Tomaž 12. 6. 25, v1.0 inicial version
-# Changes:
-#   13. 6. 25 v1.1 added support for subtitles conversion and copying
-#   13. 6. 25 v1.2 added support for UTF-8 conversion of subtitles
-#   14. 6. 25 v1.3 changed output audio codec from aac to ac3
-#   14. 6. 25 v1.4 added support for EAC3 audio codec, changed default audio codec to EAC3.
-#                  Include only conversion of first audio and video stream! (Do we really need more than audio or video stream?)
-#                  Added CRF setting for x265 codec, default is 20.  
-#   14. 6. 25 v1.5 Added support for copying all audio and video streams of allowed codecs, but without real-time stats.
-#   15. 6. 25 v1.6 Added support for dynamic bitrate mapping based on number of audio channels.
+#
+# Tomaž 12. 6. 25, v1.0 inicial version
+#
+# For version history and recent changes, see the CHANGELOG.md file.
 #
 # Known issues:
 #  - If the input .mkv file contains subtitles, they will be copied to the new file,
@@ -22,7 +16,7 @@
 #     - If only the audio stream needs to be converted, the same setting allows copying all video streams.
 #  - EAC3 on ffmpeg doesnt support more than 5.1 channels
 
-VERSION = "1.6"
+VERSION = "1.7"
 import os
 import sys
 import argparse
@@ -39,21 +33,21 @@ if NUMBER_OF_THREADS > 16:
 # Configuration section
 # ====================
 
-MULTITHREADING_ENABLED = True
+# Desired video encoding codec:
+OUTPUT_VIDEO_CODEC = "libx265"
+# Desired audio encoding codec:
+OUTPUT_AUDIO_CODEC = "aac"
 # ====================
 
 #FORCE_CONVERSION_VIDEO_CODECS = ["MPEG4-XVID","H264"]
 FORCE_CONVERSION_VIDEO_CODECS = ["MPEG4-XVID"]
 #FORCE_CONVERSION_VIDEO_CODECS = ["MPEG4"] #if you would like to convert all MPEG4 videos, use this
 FORCE_CONVERSION_AUDIO_CODECS = ["DTS", "TRUEHD"]
+# ====================
 
-#video CRF setting, lower is better quality, but bigger file size
-#Usually between 18 and 28 vor x265, 18 is visually lossless, 28 is low quality
-CRF = "20"  # Default CRF value for x265, can be adjusted
-
-# New bitrate mapping
-DEFAULT_BITRATE = "768k"  # Default bitrate if channels are unknown
-BITRATE_MAP = {
+# New audio bitrate mapping
+DEFAULT_AUDIO_BITRATE = "768k"  # Default bitrate if channels are unknown
+BITRATE_AUDIO_MAP = {
     2: "384k",
     3: "448k",
     5: "768k",
@@ -62,14 +56,14 @@ BITRATE_MAP = {
     8: "1536k"
 }
 
-OUTPUT_VIDEO_CODEC = "libx265"
-#OUTPUT_AUDIO_CODEC = "aac"
-#aac speed on old CPU is 1x-2x, conversion to ac3 is 35x-40x !
+MULTITHREADING_ENABLED = True
+# ====================
 
-#Tested aac, ac3 and eac3
-#OUTPUT_AUDIO_CODEC = "ac3" # max bitrate = 640k !!
-#EAC3 is even faster then eac3 conversion on same old CPU, speed 45-50x
-OUTPUT_AUDIO_CODEC = "aac" # libfdk_aac?
+#video CRF setting, lower is better quality, but bigger file size
+#Usually between 18 and 28 vor x265, 18 is visually lossless, 28 is low quality
+DEFAULT_CRF = "20"  # Default CRF value for x265, can be adjusted
+# ====================
+
 
 # If True, all audio and video streams that use allowed codecs will be copied instead of just the first stream.
 # This is useful when input files contain multiple audio tracks (such as different languages or commentary),
@@ -89,10 +83,11 @@ OUTPUT_AUDIO_CODEC = "aac" # libfdk_aac?
 # Do we really need more than one audio or video stream?
 COPY_ALL_AUDIO_OR_VIDEO_STREAMS_OF_ALLOWED_CODECS = False  # False or True
 # Paramether --output-mp4 will reset this setting to false (even if set to True in here)
+# ====================
 
 SUPPORTED_EXTENSIONS = [".avi", ".mkv", ".mp4", ".mpg", ".mpeg", ".mov", ".wmv"]
-
 # ====================
+
 # ======================================================================================================================
 #                  END OF CONFIGURATION SECTION
 # ======================================================================================================================
@@ -108,12 +103,14 @@ Usage:
   python3 script.py <input_path> [-i] [--log output.log] [--dry-run] [--output-mp4] [-s]
 
 Options:
-  -i                    Only display video/audio codec info, no conversion.
-  -s, --subs-only       Convert subtitles only (no video/audio processing).
-  --log <filename>      Write output to log file instead of console.
-  --dry-run             Simulate conversion without actually running ffmpeg.
-  --output-mp4          Force output format to MP4 regardless of input format.
-  --help, -h            Show this help message and exit.
+  -i                     Only display video/audio codec info, no conversion.
+  -s, --subs-only        Convert subtitles only (no video/audio processing).
+  --log <filename>       Write output to log file instead of console.
+  --dry-run              Simulate conversion without actually running ffmpeg.
+  --output-mp4           Force output format to MP4 regardless of input format.
+  --max-video-bitrate N  Force video conversion if original bitrate exceeds N kbps (0 = disabled, default).
+  --crf N                Set CRF value for video encoding (default: 20)
+  --help, -h             Show this help message and exit. For version history, see CHANGELOG.md.
 
 Behavior:
   - If input is a file, convert it.
@@ -157,6 +154,8 @@ def parse_args():
     parser.add_argument("--dry-run", action="store_true", help="Perform a dry run without actual conversion")
     parser.add_argument("--help", "-h", action="store_true", dest="show_help", help="Show help")
     parser.add_argument("--output-mp4", action="store_true", dest="output_mp4", help="Force MP4 as output format for all conversions")
+    parser.add_argument("--max-video-bitrate", dest="max_video_bitrate", type=int, help="Force video conversion if bitrate exceeds this value in kbps (0 = disabled, default)")
+    parser.add_argument("--crf", dest="crf", type=int, help="Set CRF value for video encoding (default: 20)")
     args = parser.parse_args()
 
     if args.show_help:
@@ -199,9 +198,10 @@ def convert_srt_to_utf8(original_path, log_file=None, dry_run=False):
 # ====================
 def scan_file(file_path, log_file=None):
     """Returns a dict with detected video, audio codec names and audio metadata."""
-    result = {"video_codec": None, "audio_codec": None, "audio_metadata": {}}
+    result = {"video_codec": None, "audio_codec": None, "audio_metadata": {}, "bitrate_kbps": 0}
 
     try:
+        # Detect video codec
         video_cmd = [
             "ffprobe", "-v", "error",
             "-select_streams", "v:0",
@@ -218,6 +218,7 @@ def scan_file(file_path, log_file=None):
         else:
             result["video_codec"] = codec_name
 
+        # Detect audio codec + metadata
         audio_cmd = [
             "ffprobe", "-v", "error",
             "-select_streams", "a:0",
@@ -236,18 +237,31 @@ def scan_file(file_path, log_file=None):
                 "sample_rate": stream.get("sample_rate")
             }
         #print(f" Detected metadata: audio channels={result['audio_metadata'].get('channels', '?')}, sample rate={result['audio_metadata'].get('sample_rate', '?')} Hz")
-        
-    except subprocess.CalledProcessError:
-        #print(f"Error: Failed to analyze file {file_path}")
-        print_or_log(f"Error: Failed to analyze file {file_path}", log_file)
+
+        # Detect average video stream bitrate (kbps)
+        probe_cmd = [
+            "ffprobe", "-v", "error",
+            "-select_streams", "v:0",
+            "-show_entries", "stream=bit_rate",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            str(file_path)
+        ]
+        bitrate_lines = subprocess.check_output(probe_cmd, stderr=subprocess.DEVNULL).decode().strip().splitlines()
+        if bitrate_lines:
+            bitrate_bits = int(bitrate_lines[0])
+            result["bitrate_kbps"] = bitrate_bits / 1_000
+
+    except Exception as e:
+        print_or_log(f"     Error analyzing file {file_path}: {e}", log_file)
 
     return result
 
 # ====================
-def should_convert(video_codec, audio_codec):
+def should_convert(video_codec, audio_codec, bitrate_kbps=0, max_video_bitrate=0):
     """Determine whether the video or audio stream needs conversion."""
     convert_video = False
     convert_audio = False
+    convert_video_force_bitrate_limit = False
 
     if FORCE_CONVERSION_VIDEO_CODECS:
         #print(f"Forced video codecs: {FORCE_CONVERSION_VIDEO_CODECS}")
@@ -267,7 +281,11 @@ def should_convert(video_codec, audio_codec):
         if audio_codec.upper() in FORCE_CONVERSION_AUDIO_CODECS:
             convert_audio = True
 
-    return convert_video, convert_audio
+    if max_video_bitrate > 0 and bitrate_kbps > max_video_bitrate:
+        convert_video = True
+        convert_video_force_bitrate_limit = True
+
+    return convert_video, convert_audio, convert_video_force_bitrate_limit
 
 # ====================
 def copy_subtitle_if_exists(input_path, output_path, log_file=None, dry_run=False):
@@ -318,7 +336,7 @@ def copy_subtitle_if_exists(input_path, output_path, log_file=None, dry_run=Fals
     return
 
 # ====================
-def build_video_args(input_path, convert_video, output_video_codec, output_ext):
+def build_video_args(input_path, convert_video, output_video_codec, crf, force_bitrate_limit, max_video_bitrate, output_ext):
     args = []
 
     if convert_video:
@@ -326,7 +344,12 @@ def build_video_args(input_path, convert_video, output_video_codec, output_ext):
         args += ["-c:v", OUTPUT_VIDEO_CODEC]
         args += ["-x265-params", "rd=2:psy-rd=1.5:lookahead-slices=1"]
         args += ["-preset", "fast"]
-        args += ["-crf", CRF]
+        args += ["-crf", crf]
+
+        if force_bitrate_limit and max_video_bitrate > 0:
+            target_kbps = int(max_video_bitrate)
+            bufsize_kbps = target_kbps * 2
+            args += ["-maxrate", f"{target_kbps}k", "-bufsize", f"{bufsize_kbps}k"]
     else:
         if COPY_ALL_AUDIO_OR_VIDEO_STREAMS_OF_ALLOWED_CODECS:
             args += ["-map", "0:v"]  # copy all video streams
@@ -337,7 +360,7 @@ def build_video_args(input_path, convert_video, output_video_codec, output_ext):
     return args
 
 # ====================
-def build_audio_args(input_path, convert_audio, original_audio_codec, output_audio_codec, default_bitrate, scan_func):
+def build_audio_args(input_path, convert_audio, original_audio_codec, output_audio_codec, scan_func):
     args = []
 
     if convert_audio:
@@ -380,7 +403,7 @@ def build_audio_args(input_path, convert_audio, original_audio_codec, output_aud
             ch_desc = "5.1"
             ch_num = 6  # force to 5.1 for AC3
 
-        bitrate = BITRATE_MAP.get(ch_num, DEFAULT_BITRATE)  # fallback if channels unknown
+        bitrate = BITRATE_AUDIO_MAP.get(ch_num, DEFAULT_AUDIO_BITRATE)  # fallback if channels unknown
         args += ["-b:a", bitrate]
 
         title = f"{OUTPUT_AUDIO_CODEC.upper()} Audio / {ch_desc} / {sr} Hz / {bitrate}"
@@ -405,17 +428,19 @@ def build_audio_args(input_path, convert_audio, original_audio_codec, output_aud
     return args
 
 # ====================
-def convert_file(input_path, output_path, convert_video, convert_audio, original_video_codec, original_audio_codec, dry_run=False, log_file=None):
+def convert_file(input_path, output_path, convert_video, \
+                 convert_audio, original_video_codec, original_audio_codec, crf, \
+                 force_bitrate_limit, max_video_bitrate,  dry_run=False, log_file=None):
     cmd = ["ffmpeg", "-y", "-i", str(input_path)]
 
-    #copy subtitles if output is MKV
-    if output_path.suffix.lower() == ".mkv":
+    # Always copy subtitles (regardless of video/audio conversion if output file is .mkv or .mp4)
+    if output_path.suffix.lower() == ".mkv" or output_path.suffix.lower() == ".mp4":
         cmd += ["-map", "0:s?"]
         cmd += ["-c:s", "copy"]
 
     # Compose video and audio arguments
-    cmd += build_video_args(input_path, convert_video, OUTPUT_VIDEO_CODEC, output_path.suffix.lower())
-    cmd += build_audio_args(input_path, convert_audio, original_audio_codec, OUTPUT_AUDIO_CODEC, DEFAULT_BITRATE, scan_file)
+    cmd += build_video_args(input_path, convert_video, OUTPUT_VIDEO_CODEC, crf, force_bitrate_limit, max_video_bitrate, output_path.suffix.lower())
+    cmd += build_audio_args(input_path, convert_audio, original_audio_codec, OUTPUT_AUDIO_CODEC, scan_file)
 
     if MULTITHREADING_ENABLED:
         cmd += ["-threads", str(NUMBER_OF_THREADS)]
@@ -427,7 +452,7 @@ def convert_file(input_path, output_path, convert_video, convert_audio, original
         return
 
     try:
-        print_or_log(f"CMD used: {cmd})", log_file)
+        print_or_log("CMD used: " + " ".join(cmd), log_file)    
         subprocess.run(cmd, check=True)
         video_status = original_video_codec if convert_video else "OK"
         audio_status = original_audio_codec if convert_audio else "OK"
@@ -439,7 +464,7 @@ def convert_file(input_path, output_path, convert_video, convert_audio, original
     copy_subtitle_if_exists(input_path, output_path, log_file, dry_run)
 
 # ====================
-def process_file(file_path, log_file=None, dry_run=False):
+def process_file(file_path, crf, log_file=None, dry_run=False):
     if file_path.name.startswith("conv-"):
         print_or_log(f"     File {file_path} has already been converted (starts with 'conv-')", log_file)
         return False
@@ -455,10 +480,11 @@ def process_file(file_path, log_file=None, dry_run=False):
     if existing_files:
         print_or_log(f"     File {file_path} has already been converted (conv-* exists)", log_file)
         return False
-
+        
     codecs = scan_file(file_path, log_file)
     video_codec = codecs.get("video_codec")
     audio_codec = codecs.get("audio_codec")
+    bitrate_kbps = codecs.get("bitrate_kbps", 0)
 
     if not video_codec or not audio_codec:
         print_or_log(f"     Skipping {file_path} (could not detect codecs)", log_file)
@@ -468,17 +494,27 @@ def process_file(file_path, log_file=None, dry_run=False):
         print_or_log(f"\nDRY-RUN: Checking {file_path.name}", log_file)
         print_or_log(f"     Detected codecs: video={video_codec}, audio={audio_codec}", log_file)
 
-    convert_video, convert_audio = should_convert(video_codec, audio_codec)
+    convert_video, convert_audio,  convert_video_force_bitrate_limit = should_convert(video_codec, audio_codec, bitrate_kbps, max_video_bitrate)
 
     if dry_run:
         if convert_video or convert_audio:
-            print_or_log(f"---> It would convert this file!", log_file)
+            reasons = []
+            if convert_video:
+                if convert_video_force_bitrate_limit:
+                    reasons.append(f"bitrate ({bitrate_kbps:.2f} kbps > {max_video_bitrate} kbps)")
+                if video_codec.upper() in FORCE_CONVERSION_VIDEO_CODECS or any(video_codec.upper().startswith(c) for c in FORCE_CONVERSION_VIDEO_CODECS):
+                    reasons.append(f"video codec ({video_codec})")
+            if convert_audio:
+                reasons.append(f"audio codec ({audio_codec})")
+            reason_str = ", ".join(reasons)
+            print_or_log(f"---> It would convert this file due to: {reason_str}", log_file)
 
     if not convert_video and not convert_audio:
         print_or_log(f"     File {file_path} already in correct format.", log_file)
         return False
 
-    convert_file(file_path, output_path, convert_video, convert_audio, video_codec, audio_codec, dry_run, log_file)
+    convert_file(file_path, output_path, convert_video, convert_audio, video_codec, audio_codec, crf, \
+                 convert_video_force_bitrate_limit, max_video_bitrate, dry_run, log_file)
     return True
 
 # ====================
@@ -526,6 +562,9 @@ if __name__ == "__main__":
     dry_run = args.dry_run
     log_file = args.log_file
     force_mp4 = args.output_mp4
+    max_video_bitrate = args.max_video_bitrate if args.max_video_bitrate is not None else 0
+    CRF = str(args.crf if args.crf is not None else DEFAULT_CRF)
+    
     if force_mp4: #MP4 supports only one video and one audio stream, so we need to set COPY_ALL_AUDIO_OR_VIDEO_STREAMS_OF_ALLOWED_CODECS to False
         COPY_ALL_AUDIO_OR_VIDEO_STREAMS_OF_ALLOWED_CODECS = False
 
@@ -539,6 +578,7 @@ if __name__ == "__main__":
             print_or_log(f"{input_path}", log_file)
             print_or_log(f"  video codec: {codecs.get('video_codec')}", log_file)
             print_or_log(f"  audio codec: {codecs.get('audio_codec')}", log_file)
+            print_or_log(f"  bitrate (kbps): {codecs.get('bitrate_kbps', 0)}", log_file)
             sys.exit(0)
 
         elif input_path.is_dir():
@@ -548,6 +588,7 @@ if __name__ == "__main__":
                     print_or_log(f"{file}", log_file)
                     print_or_log(f"  video codec: {codecs.get('video_codec')}", log_file)
                     print_or_log(f"  audio codec: {codecs.get('audio_codec')}", log_file)
+                    print_or_log(f"  bitrate (kbps): {codecs.get('bitrate_kbps', 0)}", log_file)
             sys.exit(0)
 
     if args.subs_only:
@@ -565,12 +606,11 @@ if __name__ == "__main__":
     if input_path.is_file():
         total_files += 1
         try:
-            if process_file(input_path, log_file, dry_run):
+            if process_file(input_path, CRF, log_file, dry_run):
                 converted += 1
                 codecs = scan_file(input_path, log_file)
-                video_status = codecs.get('video_codec', 'N/A')
-                audio_status = codecs.get('audio_codec', 'N/A')
-                converted_files.append((str(input_path), video_status, audio_status))
+                video_status, audio_status, bitrate_status = codecs.get('video_codec', 'N/A'), codecs.get('audio_codec', 'N/A'), codecs.get('bitrate_kbps', 'N/A')
+                converted_files.append((str(input_path), video_status, audio_status, bitrate_status))
             else:
                 skipped += 1
         except Exception:
@@ -582,11 +622,11 @@ if __name__ == "__main__":
             if not file.name.startswith("conv-") and file.suffix.lower() in SUPPORTED_EXTENSIONS:
                 total_files += 1
                 try:
-                    if process_file(file, log_file, dry_run):
+                    if process_file(file, CRF, log_file, dry_run):
                         converted += 1
                         codecs = scan_file(file, log_file)
-                        video_status, audio_status = codecs.get('video_codec', 'N/A'), codecs.get('audio_codec', 'N/A')
-                        converted_files.append((str(file), video_status, audio_status))
+                        video_status, audio_status, bitrate_status = codecs.get('video_codec', 'N/A'), codecs.get('audio_codec', 'N/A'), codecs.get('bitrate_kbps', 'N/A')
+                        converted_files.append((str(file), video_status, audio_status, bitrate_status))
                     else:
                         skipped += 1
                 except Exception:
@@ -596,8 +636,8 @@ if __name__ == "__main__":
 
     if converted_files:
         print_or_log("\nConverted files:", log_file)
-        for fpath, vcodec, acodec in converted_files:
-            print_or_log(f" {fpath} (Video was: {vcodec}, audio was: {acodec})", log_file)
+        for fpath, vcodec, acodec, bitrate in converted_files:
+            print_or_log(f" {fpath} (Video was: {vcodec}, audio was: {acodec}, bitrate was: {bitrate} kbps)", log_file)
           
     if failed_files:
         print_or_log("\nFailed files:", log_file)

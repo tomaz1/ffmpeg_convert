@@ -14,14 +14,16 @@ This script solves that by automatically converting only the necessary streams, 
 
 - ✅ Convert an entire folder (recursively) or a single video file
 - ✅ Converts video streams to H.265 (libx265) or any configured encoder with CRF control
-- ✅ Converts DTS, TrueHD audio to EAC3 (default) or another user-defined codec
-- ✅ Automatically processes subtitle files (.srt), including Windows-1250 to UTF-8 conversion
+- ✅ Converts DTS, TrueHD audio to AAC (default) or another user-defined codec (AC3, EAC3,...)
 - ✅ Supports copying multiple streams when needed (via config flag)
 - ✅ Multithreaded encoding using all available CPU cores (up to 16)
 - ✅ Smart codec detection and selective conversion
-- ✅ Dry-run mode to preview actions without executing
-- ✅ Possible to force video conversion to mp4 (mkv->mp4)
-- ✅ Convert subtitles only, recursively across directories
+- ✅ Dry-run mode to preview actions without executing (`--dry-run`)
+- ✅ Optionally force video conversion based on bitrate limit (`--max-video-bitrate`)
+- ✅ Optionally override video CRF quality setting (`--crf`)
+- ✅ Possible to force video conversion to mp4 (mkv->mp4) (`--output-mp4`)
+- ✅ Convert subtitles only, recursively across directories (`-s`, `--subs-only`)
+- ✅ Automatically processes subtitle files (.srt), including Windows-1250 to UTF-8 conversion
 
 ---
 
@@ -40,7 +42,6 @@ OUTPUT_AUDIO_CODEC = "eac3"     # Can be changed to ac3, aac, etc.
 
 COPY_ALL_AUDIO_OR_VIDEO_STREAMS_OF_ALLOWED_CODECS = False  # Set to True to preserve all streams
 # Parameter --output-mp4 will reset this setting to false (even if set to True in here)
-
 ```
 
 ---
@@ -63,14 +64,16 @@ python3 ffmpeg_convert.py <input_path> [options]
 
 ### ⚙️ Options
 
-| Option              | Description                                    |
-| ------------------- | ---------------------------------------------- |
-| `-i`                | Show codec info only, no conversion            |
-| `-s`, `--subs-only` | Convert subtitles only                         |
-| `--log <file>`      | Output all messages to log file                |
-| `--dry-run`         | Preview what would be done, without converting |
-| `--output-mp4`      | Force output video format to MP4               |
-| `--help`, `-h`      | Display help and exit                          |
+| Option                   | Description                                                |
+|--------------------------|------------------------------------------------------------|
+| `-i`                    | Show codec info only, no conversion                        |
+| `-s`, `--subs-only`     | Convert subtitles only                                     |
+| `--log <file>`          | Output all messages to log file                            |
+| `--dry-run`             | Preview what would be done, without converting             |
+| `--output-mp4`          | Force output video format to MP4                           |
+| `--max-video-bitrate N` | Force video conversion if bitrate > N kbps                |
+| `--crf N`               | Override default CRF value for video encoding              |
+| `--help`, `-h`          | Display help and exit                                      |
 
 ---
 
@@ -100,6 +103,22 @@ python3 script.py /path/to/videos --dry-run
 python3 script.py /path/to/videos --subs-only
 ```
 
+### Convert with CRF setting:
+
+```bash
+python3 script.py movie.mkv --crf 23
+```
+
+This example overrides the default CRF (Constant Rate Factor) value of 20 and uses CRF 23 instead, which reduces file size at the cost of slightly lower video quality. Useful for space-saving on lower-priority videos.
+
+### Convert with bitrate threshold:
+
+```bash
+python3 script.py movie.mkv --max-video-bitrate 2500
+```
+
+This example will force conversion if the detected video bitrate exceeds 2500 kbps (which equals 2.5 Mbps). This allows avoiding fractional numbers and ensures precise bitrate control.
+
 ### Log output to file:
 
 ```bash
@@ -110,7 +129,8 @@ python3 script.py movie.mkv --log output.log
 
 ## ⚠️ Known Issues
 
-- Subtitles in `.mkv` files are copied, but language metadata is lost
+- Subtitles in `.mkv` and `.mp4` output files are copied, but language metadata is lost
+  - Note: MP4 supports only basic subtitle formats like `mov_text`, and may not display multiple subtitle tracks properly on all devices
 - Only the **first** audio/video stream is converted
 - To preserve additional streams (e.g. secondary audio tracks), set `COPY_ALL_AUDIO_OR_VIDEO_STREAMS_OF_ALLOWED_CODECS = True`
   - ⚠️ This may disable real-time FFmpeg stats like time/speed/bitrate
@@ -120,6 +140,12 @@ python3 script.py movie.mkv --log output.log
 ## 📂 Supported Formats
 
 - `.avi`, `.mkv`, `.mp4`, `.mpg`, `.mpeg`, `.mov`, `.wmv`
+
+---
+
+## 📋 Changelog / Version History
+
+See [CHANGELOG.md](./CHANGELOG.md) for a full list of changes and version history.
 
 ---
 
@@ -147,4 +173,3 @@ This project is licensed under the [MIT License](https://opensource.org/licenses
 ---
 
 > “Do we really need more than one audio or video stream?” 😉
-
