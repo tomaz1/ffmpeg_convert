@@ -30,15 +30,13 @@ This script solves that by automatically converting only the necessary streams, 
 ## 🔧 Configuration Highlights (in-script)
 
 ```python
-FORCE_CONVERSION_VIDEO_CODECS = ["MPEG4-XVID"]
+OUTPUT_VIDEO_CODEC = "libx265"  # Can be changed to any ffmpeg-supported encoder
+OUTPUT_AUDIO_CODEC = "eac3"     # Can be changed to ac3, aac, etc.
 
+FORCE_CONVERSION_VIDEO_CODECS = ["MPEG4-XVID"]
 FORCE_CONVERSION_AUDIO_CODECS = ["DTS", "TRUEHD"]
 
-CRF = "20"  # lower = higher quality (range: 18–28)
-
-OUTPUT_VIDEO_CODEC = "libx265"  # Can be changed to any ffmpeg-supported encoder
-
-OUTPUT_AUDIO_CODEC = "eac3"     # Can be changed to ac3, aac, etc.
+DEFAULT_CRF = "20"  # lower = higher quality (range: 18–28)
 
 COPY_ALL_AUDIO_OR_VIDEO_STREAMS_OF_ALLOWED_CODECS = False  # Set to True to preserve all streams
 # Parameter --output-mp4 will reset this setting to false (even if set to True in here)
