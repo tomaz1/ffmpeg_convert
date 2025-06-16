@@ -31,7 +31,7 @@ This script solves that by automatically converting only the necessary streams, 
 
 ```python
 OUTPUT_VIDEO_CODEC = "libx265"  # Can be changed to any ffmpeg-supported encoder
-OUTPUT_AUDIO_CODEC = "eac3"     # Can be changed to ac3, aac, etc.
+OUTPUT_AUDIO_CODEC = "aac"     # Can be changed to ac3, eac3, etc.
 
 FORCE_CONVERSION_VIDEO_CODECS = ["MPEG4-XVID"]
 FORCE_CONVERSION_AUDIO_CODECS = ["DTS", "TRUEHD"]
