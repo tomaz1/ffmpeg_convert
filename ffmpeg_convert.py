@@ -61,7 +61,7 @@ MULTITHREADING_ENABLED = True
 
 #video CRF setting, lower is better quality, but bigger file size
 #Usually between 18 and 28 vor x265, 18 is visually lossless, 28 is low quality
-DEFAULT_CRF = "20"  # Default CRF value for x265, can be adjusted
+DEFAULT_CRF = "20"  # Default CRF value for x265, can be adjusted. Lower = higher quality (usual range: 18–28)
 # ====================
 
 
