@@ -4,7 +4,7 @@ Vse pomembne spremembe tega projekta bodo dokumentirane v tej datoteki.
 
 Format je v skladu s [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [1.7] - 2025-06-16
+## [v1.7](https://github.com/tomaz1/ffmpeg_convert/releases/tag/v1.7) - 2025-06-16
 ### Added
 - Added support for `--max-video-bitrate N` option to force video conversion if bitrate exceeds N kbps.
 - Added `--crf` override option with fallback to `DEFAULT_CRF` (default: 20).
