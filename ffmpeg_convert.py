@@ -16,7 +16,7 @@
 #     - If only the audio stream needs to be converted, the same setting allows copying all video streams.
 #  - EAC3 on ffmpeg doesnt support more than 5.1 channels
 
-VERSION = "1.7"
+VERSION = "1.73"
 import os
 import sys
 import argparse
@@ -493,7 +493,7 @@ def convert_file(input_path, output_path, convert_video, \
 
     # Copy all subtitles if the input and output format is MKV
     if input_path.suffix.lower() == ".mkv" and output_path.suffix.lower() == ".mkv":
-        args += ["-map", "0:s?", "-c:s", "copy"] # only mkv supports copying subtitles without conversion
+        cmd += ["-map", "0:s?", "-c:s", "copy"] # only mkv supports copying subtitles without conversion
 
     # Compose video and audio arguments
     cmd += build_video_args(input_path, convert_video, OUTPUT_VIDEO_CODEC, crf, force_bitrate_limit, max_video_bitrate, output_path.suffix.lower())
