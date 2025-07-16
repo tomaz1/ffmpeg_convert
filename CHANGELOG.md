@@ -1,6 +1,6 @@
 # Changelog
 
-## [CURRENT](https://github.com/tomaz1/ffmpeg_convert) - 2025-06-16
+## [CURRENT](https://github.com/tomaz1/ffmpeg_convert) - 2025-07-16
 ### Changed
 - When converting from `.mkv` to `.mp4` and if `.mkv` has subtitle/s it is skipped since `.mp4` supports only mov_text type and we would need to convert (possible TODO).
 - Better support for max video bitrate setting, to find bitrate of a video stream.
