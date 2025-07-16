@@ -710,10 +710,7 @@ if __name__ == "__main__":
     print_or_log(f"  Skipped: {skipped}", log_file)
     print_or_log(f"  Failed: {failed}", log_file)
     print_or_log(f"  Using {NUMBER_OF_THREADS} threads for conversion.", log_file)
-    if dry_run:
-        print_or_log("\nDRY RUN: No files were actually converted.", log_file)
     # show time elapsed for the whole script
-
     end_time = time.time()
     elapsed_seconds = end_time - start_time
     elapsed_td = timedelta(seconds=int(elapsed_seconds))
@@ -721,4 +718,6 @@ if __name__ == "__main__":
     hours, remainder = divmod(elapsed_td.seconds, 3600)
     minutes, seconds = divmod(remainder, 60)
     elapsed_str = f"{days:02d}:{hours:02d}:{minutes:02d}:{seconds:02d}"
-    print_or_log(f"\nTotal elapsed time (d:hh:mm:ss): {elapsed_str}", log_file)
+    print_or_log(f"  Total elapsed time (d:hh:mm:ss): {elapsed_str}", log_file)
+    if dry_run:
+        print_or_log("\nDRY RUN: No files were actually converted.", log_file)
