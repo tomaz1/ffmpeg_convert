@@ -4,6 +4,7 @@
 ### Changed
 - When converting from `.mkv` to `.mp4` and if `.mkv` has subtitle/s it is skipped since `.mp4` supports only mov_text type and we would need to convert (possible TODO).
 - Better support for max video bitrate setting, to find bitrate of a video stream.
+- Added real elapsed time display to summary statistics. (v1.74)
 
 ## [v1.7](https://github.com/tomaz1/ffmpeg_convert/releases/tag/v1.7) - 2025-06-16
 ### Added

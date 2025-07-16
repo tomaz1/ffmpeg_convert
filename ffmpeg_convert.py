@@ -16,7 +16,7 @@
 #     - If only the audio stream needs to be converted, the same setting allows copying all video streams.
 #  - EAC3 on ffmpeg doesnt support more than 5.1 channels
 
-VERSION = "1.73"
+VERSION = "1.74"
 import os
 import sys
 import argparse
@@ -24,6 +24,8 @@ import subprocess
 from pathlib import Path
 import multiprocessing
 import re
+import time
+from datetime import timedelta
 
 NUMBER_OF_THREADS = multiprocessing.cpu_count()
 if NUMBER_OF_THREADS > 16:
@@ -614,6 +616,7 @@ def process_subtitles_only(input_path, log_file=None, dry_run=False):
 
 # === Main Entry Point ===
 if __name__ == "__main__":
+    start_time = time.time()
     args = parse_args()
     input_path = Path(args.input_path)
     dry_run = args.dry_run
@@ -709,3 +712,13 @@ if __name__ == "__main__":
     print_or_log(f"  Using {NUMBER_OF_THREADS} threads for conversion.", log_file)
     if dry_run:
         print_or_log("\nDRY RUN: No files were actually converted.", log_file)
+    # show time elapsed for the whole script
+
+    end_time = time.time()
+    elapsed_seconds = end_time - start_time
+    elapsed_td = timedelta(seconds=int(elapsed_seconds))
+    days = elapsed_td.days
+    hours, remainder = divmod(elapsed_td.seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    elapsed_str = f"{days:02d}:{hours:02d}:{minutes:02d}:{seconds:02d}"
+    print_or_log(f"\nTotal elapsed time (d:hh:mm:ss): {elapsed_str}", log_file)
