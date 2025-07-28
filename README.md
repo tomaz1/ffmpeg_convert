@@ -72,7 +72,7 @@ python3 ffmpeg_convert.py <input_path> [options]
 | `--output-mp4`          | Force output video format to MP4                           |
 | `--max-video-bitrate N` | Force video conversion if bitrate > N kbps                |
 | `--crf N`               | Override default CRF value for video encoding              |
-| `--force`<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| Force re-encoding of the first video and audio streams using OUTPUT_VIDEO_CODEC and OUTPUT_AUDIO_CODEC, ignoring FORCE_CONVERSION_* rules. Skips if a conv-* file exists.|
+| `--force`<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| Force re-encoding of the first video and audio streams using OUTPUT_VIDEO_CODEC and OUTPUT_AUDIO_CODEC, ignoring FORCE_CONVERSION_* rules. Skips if a conv-* file exists|
 | `--help`, `-h`          | Display help and exit                                      |
 
 ---
