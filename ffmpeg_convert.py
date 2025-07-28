@@ -568,8 +568,7 @@ def process_file(file_path, crf, force_mp4, log_file=None, dry_run=False, force_
 
     convert_video, convert_audio,  convert_video_force_bitrate_limit =  should_convert(video_codec, \
                                                                         audio_codec, bitrate_kbps, max_video_bitrate, force_mode_enabled)
-    
-    print_or_log(f"     Convert video: {convert_video}, audio: {convert_audio}, force_bitrate_limit: {convert_video_force_bitrate_limit}", log_file)    
+    #print_or_log(f"     Convert video: {convert_video}, audio: {convert_audio}, force_bitrate_limit: {convert_video_force_bitrate_limit}", log_file)    
 
     if dry_run:
         if convert_video or convert_audio:
