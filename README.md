@@ -65,14 +65,14 @@ python3 ffmpeg_convert.py <input_path> [options]
 
 | Option                   | Description                                                |
 |--------------------------|------------------------------------------------------------|
-| `-i`                    | Show codec info only, no conversion                        |
-| `-s`, `--subs-only`     | Convert subtitles only                                     |
+| `-i`                     | Show codec info only, no conversion                        |
+| `-s`,<br>`--subs-only`     | Convert subtitles only                                     |
 | `--log <file>`          | Output all messages to log file                            |
 | `--dry-run`             | Preview what would be done, without converting             |
 | `--output-mp4`          | Force output video format to MP4                           |
 | `--max-video-bitrate N` | Force video conversion if bitrate > N kbps                |
 | `--crf N`               | Override default CRF value for video encoding              |
-| `--force`               | Force re-encoding of the first video and audio streams using OUTPUT_VIDEO_CODEC and OUTPUT_AUDIO_CODEC, ignoring FORCE_CONVERSION_* rules. Skips if a conv-* file exists.|
+| `--force`<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;| Force re-encoding of the first video and audio streams using OUTPUT_VIDEO_CODEC and OUTPUT_AUDIO_CODEC, ignoring FORCE_CONVERSION_* rules. Skips if a conv-* file exists.|
 | `--help`, `-h`          | Display help and exit                                      |
 
 ---
