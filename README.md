@@ -24,7 +24,7 @@ This script solves that by automatically converting only the necessary streams, 
 - ✅ Possible to force video conversion to mp4 (mkv->mp4) (`--output-mp4`)
 - ✅ Convert subtitles only, recursively across directories (`-s`, `--subs-only`)
 - ✅ Automatically processes subtitle files (.srt), including Windows-1250 to UTF-8 conversion
-- ✅ Force conversion of the first video and audio streams (`-force`), ignoring codec rules (FORCE_CONVERSION_VIDEO_CODECS and FORCE_CONVERSION_AUDIO_CODECS). These streams are always re-encoded using the codecs specified in OUTPUT_VIDEO_CODEC and OUTPUT_AUDIO_CODEC. Files are skipped if a conv- version already exists.
+- ✅ Force re-encoding of the first video and audio streams using OUTPUT_VIDEO_CODEC and OUTPUT_AUDIO_CODEC, ignoring FORCE_CONVERSION_* rules. Skips if a conv-* file exists. (`--force`).
 
 ---
 
