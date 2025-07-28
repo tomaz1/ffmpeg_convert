@@ -24,7 +24,7 @@ This script solves that by automatically converting only the necessary streams, 
 - ✅ Possible to force video conversion to mp4 (mkv->mp4) (`--output-mp4`)
 - ✅ Convert subtitles only, recursively across directories (`-s`, `--subs-only`)
 - ✅ Automatically processes subtitle files (.srt), including Windows-1250 to UTF-8 conversion
-- ✅ Force converting all audio/video streams (`-force`), ignoring codec rules (FORCE_CONVERSION_VIDEO_CODECS and FORCE_CONVERSION_AUDIO_CODECS) and all video/audio codecs are converted to OUTPUT_VIDEO_CODEC and OUTPUT_AUDIO_CODEC. Skips files if conv- version already exists.
+- ✅ Force conversion of the first video and audio streams (`-force`), ignoring codec rules (FORCE_CONVERSION_VIDEO_CODECS and FORCE_CONVERSION_AUDIO_CODECS). These streams are always re-encoded using the codecs specified in OUTPUT_VIDEO_CODEC and OUTPUT_AUDIO_CODEC. Files are skipped if a conv- version already exists.
 
 ---
 
@@ -72,7 +72,7 @@ python3 ffmpeg_convert.py <input_path> [options]
 | `--output-mp4`          | Force output video format to MP4                           |
 | `--max-video-bitrate N` | Force video conversion if bitrate > N kbps                |
 | `--crf N`               | Override default CRF value for video encoding              |
-| `--force`               | Force conversion of video and audio streams, ignoring codec rules (FORCE_CONVERSION_VIDEO_CODECS / FORCE_CONVERSION_AUDIO_CODECS). Skips files if a conv-* version already exists.|
+| `--force`               | Force re-encoding of the first video and audio streams using OUTPUT_VIDEO_CODEC and OUTPUT_AUDIO_CODEC, ignoring FORCE_CONVERSION_* rules. Skips if a conv-* file exists.|
 | `--help`, `-h`          | Display help and exit                                      |
 
 ---

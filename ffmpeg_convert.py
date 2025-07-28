@@ -114,9 +114,8 @@ Options:
   --output-mp4           Force output format to MP4 regardless of input format.
   --max-video-bitrate N  Force video conversion if original bitrate exceeds N kbps (0 = disabled, default).
   --crf N                Set CRF value for video encoding (default: 20)
-  --force                Force conversion of video and audio streams, ignoring codec rules
-                         (FORCE_CONVERSION_VIDEO_CODECS / FORCE_CONVERSION_AUDIO_CODECS). 
-                         Skips files if a conv-* version already exists.
+  --force                Force re-encoding of the first video and audio streams using OUTPUT_VIDEO_CODEC and
+                         OUTPUT_AUDIO_CODEC, ignoring FORCE_CONVERSION_* rules. Skips if a conv-* file exists.
   --help, -h             Show this help message and exit. For version history, see CHANGELOG.md.
 
 Behavior:
