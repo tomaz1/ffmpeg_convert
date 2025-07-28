@@ -548,11 +548,10 @@ def process_file(file_path, crf, force_mp4, log_file=None, dry_run=False, force_
     output_ext = '.mp4' if force_mp4 else ('.mkv' if file_path.suffix.lower() == '.mkv' else '.mp4')
     output_filename = f"conv-{file_path.stem}{output_ext}"
     output_path = file_path.parent / output_filename
-    existing_files = list(file_path.parent.glob(f"conv-{file_path.stem}.*"))
-    if existing_files:
-        print_or_log(f"     File {file_path} has already been converted (conv-* exists)", log_file)
+    if output_path.exists():
+        print_or_log(f"     File {file_path} has already been converted (output {output_path.name} exists)", log_file)
         return False
-        
+ 
     codecs = scan_file(file_path, log_file)
     video_codec = codecs.get("video_codec")
     audio_codec = codecs.get("audio_codec")
