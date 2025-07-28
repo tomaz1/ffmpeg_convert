@@ -16,7 +16,7 @@
 #     - If only the audio stream needs to be converted, the same setting allows copying all video streams.
 #  - EAC3 on ffmpeg doesnt support more than 5.1 channels
 
-VERSION = "1.74"
+VERSION = "1.75"
 import os
 import sys
 import argparse
@@ -42,6 +42,7 @@ OUTPUT_VIDEO_CODEC = "libx265" # If you change this, be careful and update the f
 OUTPUT_AUDIO_CODEC = "aac" # Tested with aac, ac3 and eac3, but can be changed to any codec supported by ffmpeg.
 # ====================
 
+# If --force is used those variables are ignored and all video/audio codecs are converted to OUTPUT_VIDEO_CODEC and OUTPUT_AUDIO_CODEC.
 #FORCE_CONVERSION_VIDEO_CODECS = ["MPEG4-XVID","H264"]
 FORCE_CONVERSION_VIDEO_CODECS = ["MPEG4-XVID"]
 #FORCE_CONVERSION_VIDEO_CODECS = ["MPEG4"] #if you would like to convert all MPEG4 videos, use this
@@ -103,7 +104,7 @@ def help():
 FFmpeg Video Converter Script, v{4} (Tomaž 2025)
 
 Usage:
-  python3 script.py <input_path> [-i] [--log output.log] [--dry-run] [--output-mp4] [-s]
+  python3 script.py [-i] [--log output.log] [--dry-run] [--output-mp4] [-s] [--crf N] [--max-video-bitrate N] [--force] [--help] <input_path>
 
 Options:
   -i                     Only display video/audio codec info, no conversion.
@@ -113,6 +114,9 @@ Options:
   --output-mp4           Force output format to MP4 regardless of input format.
   --max-video-bitrate N  Force video conversion if original bitrate exceeds N kbps (0 = disabled, default).
   --crf N                Set CRF value for video encoding (default: 20)
+  --force                Force conversion of video and audio streams, ignoring codec rules
+                         (FORCE_CONVERSION_VIDEO_CODECS / FORCE_CONVERSION_AUDIO_CODECS). 
+                         Skips files if a conv-* version already exists.
   --help, -h             Show this help message and exit. For version history, see CHANGELOG.md.
 
 Behavior:
@@ -159,6 +163,7 @@ def parse_args():
     parser.add_argument("--output-mp4", action="store_true", dest="output_mp4", help="Force MP4 as output format for all conversions")
     parser.add_argument("--max-video-bitrate", dest="max_video_bitrate", type=int, help="Force video conversion if bitrate exceeds this value in kbps (0 = disabled, default)")
     parser.add_argument("--crf", dest="crf", type=int, help="Set CRF value for video encoding (default: 20)")
+    parser.add_argument("--force", action="store_true", help="Force converting even if file(s) otherwise wouldn't be converted. Force converting video and audio streams.")
     args = parser.parse_args()
 
     if args.show_help:
@@ -307,11 +312,17 @@ def scan_file(file_path, log_file=None):
 
 
 # ====================
-def should_convert(video_codec, audio_codec, bitrate_kbps=0, max_video_bitrate=0):
+def should_convert(video_codec, audio_codec, bitrate_kbps=0, max_video_bitrate=0, force_mode_enabled=False):
     """Determine whether the video or audio stream needs conversion."""
     convert_video = False
     convert_audio = False
     convert_video_force_bitrate_limit = False
+
+    if force_mode_enabled:
+        # If force mode is enabled, always convert
+        if max_video_bitrate > 0 and bitrate_kbps > max_video_bitrate:
+            convert_video_force_bitrate_limit = True
+        return True, True, convert_video_force_bitrate_limit
 
     if FORCE_CONVERSION_VIDEO_CODECS:
         #print(f"Forced video codecs: {FORCE_CONVERSION_VIDEO_CODECS}")
@@ -490,8 +501,11 @@ def build_audio_args(input_path, convert_audio, original_audio_codec, output_aud
 # ====================
 def convert_file(input_path, output_path, convert_video, \
                  convert_audio, original_video_codec, original_audio_codec, crf, \
-                 force_bitrate_limit, max_video_bitrate,  dry_run=False, log_file=None):
+                 force_bitrate_limit, max_video_bitrate,  dry_run=False, log_file=None, \
+                 force_mode_enabled=False):
+    #cmd = ["ffmpeg", "-y", "-analyzeduration", "5000000", "-probesize", "5000000", "-i", str(input_path)]
     cmd = ["ffmpeg", "-y", "-i", str(input_path)]
+
 
     # Copy all subtitles if the input and output format is MKV
     if input_path.suffix.lower() == ".mkv" and output_path.suffix.lower() == ".mkv":
@@ -523,7 +537,7 @@ def convert_file(input_path, output_path, convert_video, \
     copy_subtitle_if_exists(input_path, output_path, log_file, dry_run)
 
 # ====================
-def process_file(file_path, crf, force_mp4,log_file=None, dry_run=False):
+def process_file(file_path, crf, force_mp4, log_file=None, dry_run=False, force_mode_enabled=False):
     if file_path.name.startswith("conv-"):
         print_or_log(f"     File {file_path} has already been converted (starts with 'conv-')", log_file)
         return False
@@ -553,18 +567,26 @@ def process_file(file_path, crf, force_mp4,log_file=None, dry_run=False):
         print_or_log(f"\nDRY-RUN: Checking {file_path.name}", log_file)
         print_or_log(f"     Detected codecs: video={video_codec}, audio={audio_codec}", log_file)
 
-    convert_video, convert_audio,  convert_video_force_bitrate_limit = should_convert(video_codec, audio_codec, bitrate_kbps, max_video_bitrate)
+    convert_video, convert_audio,  convert_video_force_bitrate_limit =  should_convert(video_codec, \
+                                                                        audio_codec, bitrate_kbps, max_video_bitrate, force_mode_enabled)
+    
+    print_or_log(f"     Convert video: {convert_video}, audio: {convert_audio}, force_bitrate_limit: {convert_video_force_bitrate_limit}", log_file)    
 
     if dry_run:
         if convert_video or convert_audio:
             reasons = []
             if convert_video:
+                if force_mode_enabled:
+                    reasons.append("forced mode (video)")
                 if convert_video_force_bitrate_limit:
                     reasons.append(f"bitrate ({bitrate_kbps:.2f} kbps > {max_video_bitrate} kbps)")
                 if video_codec.upper() in FORCE_CONVERSION_VIDEO_CODECS or any(video_codec.upper().startswith(c) for c in FORCE_CONVERSION_VIDEO_CODECS):
                     reasons.append(f"video codec ({video_codec})")
             if convert_audio:
-                reasons.append(f"audio codec ({audio_codec})")
+                if force_mode_enabled:
+                    reasons.append("forced mode (audio)")
+                else:
+                    reasons.append(f"audio codec ({audio_codec})")
             reason_str = ", ".join(reasons)
             print_or_log(f"---> It would convert this file due to: {reason_str}", log_file)
 
@@ -573,7 +595,7 @@ def process_file(file_path, crf, force_mp4,log_file=None, dry_run=False):
         return False
 
     convert_file(file_path, output_path, convert_video, convert_audio, video_codec, audio_codec, crf, \
-                 convert_video_force_bitrate_limit, max_video_bitrate, dry_run, log_file)
+                 convert_video_force_bitrate_limit, max_video_bitrate, dry_run, log_file, force_mode_enabled)
     return True
 
 # ====================
@@ -621,6 +643,7 @@ if __name__ == "__main__":
     input_path = Path(args.input_path)
     dry_run = args.dry_run
     log_file = args.log_file
+    force_mode_enabled = args.force
     force_mp4 = args.output_mp4
     max_video_bitrate = args.max_video_bitrate if args.max_video_bitrate is not None else 0
     CRF = str(args.crf if args.crf is not None else DEFAULT_CRF)
@@ -661,12 +684,14 @@ if __name__ == "__main__":
     failed = 0
     converted_files = []  # list of tuples: (path, video_status, audio_status)
     failed_files = []
-
+    
+    if force_mode_enabled:
+        print_or_log(" ===> FORCE mode enabled: all audio and video streams will be re-encoded.", log_file)
 
     if input_path.is_file():
         total_files += 1
         try:
-            if process_file(input_path, CRF, force_mp4,log_file, dry_run):
+            if process_file(input_path, CRF, force_mp4, log_file, dry_run, force_mode_enabled):
                 converted += 1
                 codecs = scan_file(input_path, log_file)
                 video_status, audio_status, bitrate_status = codecs.get('video_codec', 'N/A'), codecs.get('audio_codec', 'N/A'), codecs.get('bitrate_kbps', 'N/A')
@@ -682,7 +707,7 @@ if __name__ == "__main__":
             if not file.name.startswith("conv-") and file.suffix.lower() in SUPPORTED_EXTENSIONS:
                 total_files += 1
                 try:
-                    if process_file(file, CRF, force_mp4, log_file, dry_run):
+                    if process_file(file, CRF, force_mp4, log_file, dry_run, force_mode_enabled):
                         converted += 1
                         codecs = scan_file(file, log_file)
                         video_status, audio_status, bitrate_status = codecs.get('video_codec', 'N/A'), codecs.get('audio_codec', 'N/A'), codecs.get('bitrate_kbps', 'N/A')
