@@ -14,6 +14,7 @@
 - FFmpeg now applies `-maxrate` and `-bufsize` when bitrate exceeds limit.
 - `should_convert` now returns reasons for conversion (e.g., codec, bitrate).
 - Improved dry-run logging for multiple conversion reasons.
+- Better display of used CMD, if you copy and paste and use ffmpeg command on it's own.
 
 ## [1.6] - 2025-06-15
 ### Added

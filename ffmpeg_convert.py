@@ -16,7 +16,7 @@
 #     - If only the audio stream needs to be converted, the same setting allows copying all video streams.
 #  - EAC3 on ffmpeg doesnt support more than 5.1 channels
 
-VERSION = "1.75"
+VERSION = "1.76"
 import os
 import sys
 import argparse
@@ -477,7 +477,7 @@ def build_audio_args(input_path, convert_audio, original_audio_codec, output_aud
         args += ["-b:a", bitrate]
 
         title = f"{OUTPUT_AUDIO_CODEC.upper()} Audio / {ch_desc} / {sr} Hz / {bitrate}"
-        args += ["-metadata:s:a:0", f"title={title}"]
+        args += ["-metadata:s:a:0", f"title='{title}'"]
 
         if OUTPUT_AUDIO_CODEC.upper() in ["AC3", "EAC3"]:
             args += ["-ac", "6", "-channel_layout", "5.1"] #AC3 supports max 5.1
